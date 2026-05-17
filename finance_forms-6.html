@@ -1,0 +1,905 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Финансы</title>
+<style>
+@import url('https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@300;400;500&family=Inter:wght@300;400;500;600&display=swap');
+
+:root {
+  --bg:#111114; --s1:#18181d; --s2:#1f1f26; --s3:#28282f;
+  --border:#2a2a35; --border2:#35353f;
+  --text:#e2e2ea; --muted:#5a5a70; --muted2:#3a3a4a;
+  --r:#ff5370; --g:#4ade80; --b:#60a5fa; --y:#fbbf24;
+  --rad:10px;
+}
+*{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent;}
+html{touch-action:manipulation;}
+body{background:var(--bg);color:var(--text);font-family:'Inter',sans-serif;font-size:14px;min-height:100vh;overflow-x:hidden;}
+
+/* HEADER */
+.hdr{display:flex;align-items:center;justify-content:space-between;padding:14px 14px 10px;border-bottom:1px solid var(--border);position:sticky;top:0;background:var(--bg);z-index:200;}
+.hdr h1{font-family:'JetBrains Mono',monospace;font-size:15px;font-weight:500;letter-spacing:-.3px;}
+.hdr p{font-size:11px;color:var(--muted);margin-top:2px;}
+.sync-btn{display:flex;align-items:center;gap:6px;background:var(--s2);border:1px solid var(--border2);border-radius:8px;color:var(--text);font-family:'Inter',sans-serif;font-size:12px;padding:7px 11px;cursor:pointer;}
+.sync-cnt{background:var(--r);color:#fff;font-size:10px;font-weight:700;border-radius:100px;padding:1px 5px;min-width:17px;text-align:center;}
+
+/* TABS */
+.tabs{display:flex;border-bottom:1px solid var(--border);overflow-x:auto;scrollbar-width:none;background:var(--bg);position:sticky;top:55px;z-index:190;}
+.tabs::-webkit-scrollbar{display:none;}
+.tab{flex-shrink:0;padding:9px 15px;font-size:12px;font-weight:500;color:var(--muted);cursor:pointer;border-bottom:2px solid transparent;transition:all .15s;white-space:nowrap;background:none;border-top:none;border-left:none;border-right:none;}
+.tab.ar{color:var(--r);border-bottom-color:var(--r);}
+.tab.ag{color:var(--g);border-bottom-color:var(--g);}
+
+/* PANEL */
+.panel{display:none;padding-bottom:120px;}
+.panel.vis{display:block;}
+
+/* TABLE */
+.twrap{overflow-x:auto;-webkit-overflow-scrolling:touch;}
+table{width:100%;min-width:580px;border-collapse:collapse;font-size:13px;}
+thead th{background:var(--s1);color:var(--muted);font-size:10px;font-weight:500;text-transform:uppercase;letter-spacing:.6px;padding:7px 8px;text-align:left;border-bottom:1px solid var(--border);white-space:nowrap;position:sticky;top:0;}
+
+/* DATA ROWS */
+tbody tr.drow{border-bottom:1px solid var(--border);transition:background .1s;cursor:default;}
+tbody tr.drow:hover{background:var(--s1);}
+tbody tr.drow.selected{background:rgba(96,165,250,.07);outline:1px solid rgba(96,165,250,.2);}
+tbody tr.drow.dragging{opacity:.4;}
+tbody tr.drow.drag-over{border-top:2px solid var(--b);}
+tbody tr.drow.new-row{animation:rowIn .3s ease;}
+@keyframes rowIn{from{opacity:0;background:rgba(96,165,250,.1);}to{opacity:1;}}
+
+td{padding:0;vertical-align:middle;}
+td input,td select{width:100%;background:transparent;border:none;color:var(--text);font-family:'Inter',sans-serif;font-size:13px;padding:8px 8px;outline:none;min-width:0;appearance:none;-webkit-appearance:none;}
+td input:focus,td select:focus{background:var(--s2);}
+td select option{background:var(--s2);}
+
+/* cell highlight for partial copy */
+td.cell-sel{background:rgba(251,191,36,.1);outline:1px solid rgba(251,191,36,.3);}
+
+/* COLUMN WIDTHS */
+.cm{width:82px;} .cd{width:76px;} .cn{min-width:130px;} .cs{width:88px;} .ca{min-width:145px;} .cx{width:36px;}
+
+/* drag handle */
+.drag-handle{color:var(--muted2);cursor:grab;padding:8px 6px;display:flex;align-items:center;user-select:none;}
+.drag-handle:active{cursor:grabbing;}
+
+/* action icon in last col */
+.row-menu-btn{display:flex;align-items:center;justify-content:center;width:26px;height:26px;margin:4px;border-radius:5px;border:none;background:transparent;color:var(--muted);cursor:pointer;transition:all .15s;}
+.row-menu-btn:hover{color:var(--text);background:var(--s3);}
+
+/* TOOLTIP */
+.tip{position:fixed;background:var(--s2);border:1px solid var(--border2);border-radius:8px;padding:8px 12px;font-size:12px;max-width:260px;word-break:break-word;z-index:900;pointer-events:none;opacity:0;transition:opacity .15s;box-shadow:0 4px 16px rgba(0,0,0,.5);}
+.tip.show{opacity:1;}
+
+/* BOTTOM TOTAL */
+.bot{position:sticky;bottom:60px;background:var(--bg);border-top:1px solid var(--border);padding:8px 14px;display:flex;justify-content:flex-end;}
+.total{font-family:'JetBrains Mono',monospace;font-size:13px;color:var(--muted);}
+.total span{color:var(--text);font-weight:500;}
+
+/* FAB */
+.fab{position:fixed;bottom:16px;right:16px;width:52px;height:52px;border-radius:50%;border:none;background:var(--b);color:#000;font-size:24px;cursor:pointer;box-shadow:0 4px 20px rgba(96,165,250,.35);z-index:300;display:flex;align-items:center;justify-content:center;transition:transform .15s,box-shadow .15s;}
+.fab:active{transform:scale(.93);}
+.fab.r-mode{background:var(--r);box-shadow:0 4px 20px rgba(255,83,112,.35);}
+.fab.g-mode{background:var(--g);box-shadow:0 4px 20px rgba(74,222,128,.35);}
+
+/* DRAWER (add row form) */
+.drawer-overlay{display:none;position:fixed;inset:0;background:rgba(0,0,0,.6);z-index:400;}
+.drawer-overlay.open{display:flex;align-items:flex-end;}
+.drawer{background:var(--s1);border:1px solid var(--border2);border-radius:18px 18px 0 0;padding:18px 16px 32px;width:100%;max-height:85vh;overflow-y:auto;}
+.drawer h3{font-family:'JetBrains Mono',monospace;font-size:13px;font-weight:500;margin-bottom:14px;color:var(--muted);}
+.fg{margin-bottom:11px;}
+.fg label{display:block;font-size:10px;text-transform:uppercase;letter-spacing:.7px;color:var(--muted);margin-bottom:4px;}
+.fg input,.fg select{width:100%;background:var(--s2);border:1px solid var(--border2);border-radius:8px;color:var(--text);font-family:'Inter',sans-serif;font-size:15px;padding:11px 12px;outline:none;appearance:none;-webkit-appearance:none;}
+.fg select option{background:var(--s2);}
+.fg input:focus,.fg select:focus{border-color:var(--b);}
+.drawer-btns{display:flex;gap:10px;margin-top:14px;}
+.dbtn{flex:1;padding:13px;border-radius:var(--rad);border:none;font-family:'Inter',sans-serif;font-size:13px;font-weight:600;cursor:pointer;}
+.dbtn-cancel{background:var(--s3);color:var(--muted);}
+.dbtn-add-r{background:var(--r);color:#fff;}
+.dbtn-add-g{background:var(--g);color:#000;}
+
+/* CONTEXT MENU */
+.ctx{position:fixed;background:var(--s2);border:1px solid var(--border2);border-radius:12px;padding:6px;z-index:800;min-width:200px;box-shadow:0 8px 32px rgba(0,0,0,.6);}
+.ctx-item{display:flex;align-items:center;gap:10px;padding:10px 12px;border-radius:8px;font-size:13px;cursor:pointer;transition:background .1s;}
+.ctx-item:hover{background:var(--s3);}
+.ctx-item.danger{color:var(--r);}
+.ctx-sep{height:1px;background:var(--border);margin:4px 0;}
+
+/* PASTE TARGET MENU */
+.paste-bar{position:fixed;bottom:80px;left:50%;transform:translateX(-50%);background:var(--s2);border:1px solid var(--border2);border-radius:100px;padding:8px 16px;display:flex;align-items:center;gap:10px;font-size:12px;z-index:350;box-shadow:0 4px 20px rgba(0,0,0,.5);}
+.paste-bar button{background:var(--b);border:none;border-radius:100px;color:#000;font-size:12px;font-weight:600;padding:5px 12px;cursor:pointer;}
+.paste-bar .pb-cancel{background:var(--s3);color:var(--muted);}
+
+/* SYNC OVERLAY */
+.ov{display:none;position:fixed;inset:0;background:rgba(0,0,0,.7);z-index:500;align-items:flex-end;}
+.ov.open{display:flex;}
+.modal{background:var(--s1);border:1px solid var(--border2);border-radius:18px 18px 0 0;padding:20px;width:100%;}
+.modal h2{font-family:'JetBrains Mono',monospace;font-size:14px;font-weight:500;margin-bottom:4px;}
+.modal-sub{font-size:12px;color:var(--muted);margin-bottom:14px;}
+.si{display:flex;align-items:center;justify-content:space-between;padding:9px 0;border-bottom:1px solid var(--border);font-size:13px;}
+.si:last-child{border-bottom:none;}
+.sbadge{font-family:'JetBrains Mono',monospace;font-size:11px;background:var(--s3);border-radius:6px;padding:2px 7px;color:var(--muted);}
+.modal-btns{display:flex;gap:10px;margin-top:14px;}
+.mbtn{flex:1;padding:12px;border-radius:var(--rad);border:none;font-family:'Inter',sans-serif;font-size:13px;font-weight:600;cursor:pointer;}
+.mbtn-c{background:var(--s3);color:var(--muted);}
+.mbtn-s{background:var(--b);color:#000;}
+
+/* TOAST */
+.toast{position:fixed;bottom:76px;left:50%;transform:translateX(-50%);background:var(--s2);border:1px solid var(--border2);border-radius:100px;padding:9px 16px;font-size:13px;z-index:999;opacity:0;transition:opacity .2s;white-space:nowrap;pointer-events:none;}
+.toast.show{opacity:1;}
+.toast.ok{border-color:rgba(74,222,128,.4);color:var(--g);}
+.toast.err{border-color:rgba(255,83,112,.4);color:var(--r);}
+.toast.info{border-color:rgba(96,165,250,.4);color:var(--b);}
+
+/* SETTINGS PANEL */
+.settings-wrap{padding:20px 16px;max-width:600px;}
+.sblock{background:var(--s1);border:1px solid var(--border);border-radius:var(--rad);padding:16px;margin-bottom:14px;}
+.sblock h3{font-family:'JetBrains Mono',monospace;font-size:12px;font-weight:500;color:var(--muted);text-transform:uppercase;letter-spacing:.5px;margin-bottom:12px;}
+.srow{margin-bottom:10px;}
+.srow label{display:block;font-size:11px;color:var(--muted);margin-bottom:4px;text-transform:uppercase;letter-spacing:.5px;}
+.srow input{width:100%;background:var(--s2);border:1px solid var(--border2);border-radius:8px;color:var(--text);font-family:'JetBrains Mono',monospace;font-size:12px;padding:10px 12px;outline:none;}
+.srow input:focus{border-color:var(--b);}
+.srow input.ok-input{border-color:rgba(74,222,128,.5);}
+.sbtn-row{display:flex;gap:8px;flex-wrap:wrap;}
+.sbtn{padding:10px 16px;border-radius:8px;border:1px solid var(--border2);background:var(--s2);color:var(--text);font-family:'Inter',sans-serif;font-size:12px;font-weight:500;cursor:pointer;transition:all .15s;display:flex;align-items:center;gap:6px;}
+.sbtn:hover{background:var(--s3);}
+.sbtn.primary{background:var(--b);border-color:var(--b);color:#000;}
+.sbtn.danger{border-color:rgba(255,83,112,.3);color:var(--r);}
+.sbtn:disabled{opacity:.4;cursor:not-allowed;}
+.status-line{font-size:12px;color:var(--muted);margin-top:8px;min-height:18px;}
+.status-line.ok{color:var(--g);}
+.status-line.err{color:var(--r);}
+.status-line.loading{color:var(--b);}
+.sheet-status{display:flex;flex-direction:column;gap:6px;margin-top:4px;}
+.sheet-row{display:flex;align-items:center;justify-content:space-between;font-size:12px;padding:6px 0;border-bottom:1px solid var(--border);}
+.sheet-row:last-child{border-bottom:none;}
+.sheet-name{font-family:'JetBrains Mono',monospace;color:var(--text);}
+.sheet-cnt{color:var(--muted);}
+.sheet-cnt.loaded{color:var(--g);}
+.tab.as{color:var(--b);border-bottom-color:var(--b);}
+</style>
+</head>
+<body>
+
+<!-- HEADER -->
+<div class="hdr">
+  <div><h1>Финансы</h1><p>Личная финансовая модель</p></div>
+  <button class="sync-btn" onclick="openSync()">
+    <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8"/><path d="M3 3v5h5"/></svg>
+    Выгрузить <span class="sync-cnt" id="sync-cnt">0</span>
+  </button>
+</div>
+
+<!-- TABS -->
+<div class="tabs">
+  <button class="tab" onclick="showTab('рф','r',this)">Расходы · Факт</button>
+  <button class="tab" onclick="showTab('рп','r',this)">Расходы · План</button>
+  <button class="tab" onclick="showTab('дф','g',this)">Доходы · Факт</button>
+  <button class="tab" onclick="showTab('дп','g',this)">Доходы · План</button>
+  <button class="tab" id="tab-settings" onclick="showTab('настройки','s',this)">⚙ Таблица</button>
+</div>
+
+<!-- PANELS -->
+<div id="panel-рф" class="panel"><div class="twrap"><table>
+  <thead><tr><th class="cm">Месяц</th><th class="cd">Дата</th><th class="cn">Номенклатура</th><th class="cs">Сумма</th><th class="ca">Статья расхода</th><th class="cx"></th></tr></thead>
+  <tbody id="body-рф"></tbody>
+</table></div><div class="bot"><div class="total">Итого: <span id="tot-рф">0,00</span> ₽</div></div></div>
+
+<div id="panel-рп" class="panel"><div class="twrap"><table>
+  <thead><tr><th class="cm">Расч. мес.</th><th class="cd">Дата</th><th class="cn">Номенклатура</th><th class="cs">Сумма</th><th class="ca">Статья расхода</th><th class="cx"></th></tr></thead>
+  <tbody id="body-рп"></tbody>
+</table></div><div class="bot"><div class="total">Итого: <span id="tot-рп">0,00</span> ₽</div></div></div>
+
+<div id="panel-дф" class="panel"><div class="twrap"><table>
+  <thead><tr><th class="cm">Месяц</th><th class="cd">Дата</th><th class="cn">Номенклатура</th><th class="cs">Сумма</th><th class="ca">Статья дохода</th><th class="cx"></th></tr></thead>
+  <tbody id="body-дф"></tbody>
+</table></div><div class="bot"><div class="total">Итого: <span id="tot-дф">0,00</span> ₽</div></div></div>
+
+<div id="panel-дп" class="panel"><div class="twrap"><table>
+  <thead><tr><th class="cm">Расч. мес.</th><th class="cd">Дата</th><th class="cn">Номенклатура</th><th class="cs">Сумма</th><th class="ca">Статья дохода</th><th class="cx"></th></tr></thead>
+  <tbody id="body-дп"></tbody>
+</table></div><div class="bot"><div class="total">Итого: <span id="tot-дп">0,00</span> ₽</div></div></div>
+
+<!-- SETTINGS PANEL -->
+<div id="panel-настройки" class="panel">
+  <div class="settings-wrap">
+
+    <div class="sblock">
+      <h3>Подключение к Google Таблице</h3>
+      <div class="srow">
+        <label>URL Apps Script</label>
+        <input id="cfg-url" type="url" placeholder="https://script.google.com/macros/s/.../exec" oninput="saveConfig()">
+        <p style="font-size:11px;color:var(--muted);margin-top:5px;">⚠ Это не ссылка на таблицу — нужен URL из Apps Script → Развернуть → Управление развёртываниями</p>
+      </div>
+      <div class="status-line" id="url-status"></div>
+      <div class="sbtn-row" style="margin-top:10px;">
+        <button class="sbtn" onclick="testConnection()">
+          <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/></svg>
+          Проверить соединение
+        </button>
+      </div>
+    </div>
+
+    <div class="sblock">
+      <h3>Получить данные из таблицы</h3>
+      <p style="font-size:12px;color:var(--muted);margin-bottom:12px;">Локальные данные будут <strong style="color:var(--y)">заменены</strong> данными из таблицы.</p>
+      <div class="sheet-status">
+        <div class="sheet-row">
+          <span class="sheet-name">Р_ФАКТ</span>
+          <span class="sheet-cnt" id="cnt-рф">—</span>
+          <button class="sbtn" style="padding:5px 10px;font-size:11px;" onclick="fetchOne('рф')">↓ Получить</button>
+        </div>
+        <div class="sheet-row">
+          <span class="sheet-name">Р_ПЛАН</span>
+          <span class="sheet-cnt" id="cnt-рп">—</span>
+          <button class="sbtn" style="padding:5px 10px;font-size:11px;" onclick="fetchOne('рп')">↓ Получить</button>
+        </div>
+        <div class="sheet-row">
+          <span class="sheet-name">Д_ФАКТ</span>
+          <span class="sheet-cnt" id="cnt-дф">—</span>
+          <button class="sbtn" style="padding:5px 10px;font-size:11px;" onclick="fetchOne('дф')">↓ Получить</button>
+        </div>
+        <div class="sheet-row">
+          <span class="sheet-name">Д_ПЛАН</span>
+          <span class="sheet-cnt" id="cnt-дп">—</span>
+          <button class="sbtn" style="padding:5px 10px;font-size:11px;" onclick="fetchOne('дп')">↓ Получить</button>
+        </div>
+      </div>
+      <div class="sbtn-row" style="margin-top:12px;">
+        <button class="sbtn primary" id="btn-fetch" onclick="fetchFromSheet()">↓ Получить все листы</button>
+      </div>
+      <div class="status-line" id="fetch-status"></div>
+    </div>
+
+    <div class="sblock">
+      <h3>Выгрузить данные в таблицу</h3>
+      <p style="font-size:12px;color:var(--muted);margin-bottom:12px;">Полная перезапись нужных колонок. Формулы и остальные колонки не затрагиваются.</p>
+      <div class="sheet-status">
+        <div class="sheet-row">
+          <span class="sheet-name">Р_ФАКТ</span>
+          <span class="sheet-cnt" id="push-рф">—</span>
+          <button class="sbtn" style="padding:5px 10px;font-size:11px;border-color:rgba(74,222,128,.3);color:var(--g);" onclick="pushOne('рф')">↑ Выгрузить</button>
+        </div>
+        <div class="sheet-row">
+          <span class="sheet-name">Р_ПЛАН</span>
+          <span class="sheet-cnt" id="push-рп">—</span>
+          <button class="sbtn" style="padding:5px 10px;font-size:11px;border-color:rgba(74,222,128,.3);color:var(--g);" onclick="pushOne('рп')">↑ Выгрузить</button>
+        </div>
+        <div class="sheet-row">
+          <span class="sheet-name">Д_ФАКТ</span>
+          <span class="sheet-cnt" id="push-дф">—</span>
+          <button class="sbtn" style="padding:5px 10px;font-size:11px;border-color:rgba(74,222,128,.3);color:var(--g);" onclick="pushOne('дф')">↑ Выгрузить</button>
+        </div>
+        <div class="sheet-row">
+          <span class="sheet-name">Д_ПЛАН</span>
+          <span class="sheet-cnt" id="push-дп">—</span>
+          <button class="sbtn" style="padding:5px 10px;font-size:11px;border-color:rgba(74,222,128,.3);color:var(--g);" onclick="pushOne('дп')">↑ Выгрузить</button>
+        </div>
+      </div>
+      <div class="sbtn-row" style="margin-top:12px;">
+        <button class="sbtn primary" id="btn-push" onclick="pushToSheet()" style="background:var(--g);border-color:var(--g);color:#000;">↑ Выгрузить все листы</button>
+      </div>
+      <div class="status-line" id="push-status"></div>
+    </div>
+
+    <div class="sblock">
+      <h3>Локальные данные</h3>
+      <div class="sbtn-row">
+        <button class="sbtn danger" onclick="clearLocalData()">✕ Очистить локальные данные</button>
+      </div>
+    </div>
+
+  </div>
+</div>
+
+<!-- FAB -->
+<button class="fab r-mode" id="fab" onclick="openDrawer()">＋</button>
+
+<!-- DRAWER -->
+<div class="drawer-overlay" id="dov">
+  <div class="drawer" id="drawer">
+    <h3 id="drawer-title">Новая запись</h3>
+    <div class="fg"><label>Месяц (необязательно)</label><select id="d-mes"><option value="">—</option></select></div>
+    <div class="fg"><label>Дата</label><input id="d-dat" type="date"></div>
+    <div class="fg"><label>Номенклатура</label><input id="d-nom" type="text" placeholder="Название операции"></div>
+    <div class="fg"><label>Сумма</label><input id="d-sum" type="number" placeholder="0.00" step="0.01"></div>
+    <div class="fg"><label>Статья (необязательно)</label><select id="d-art"><option value="">—</option></select></div>
+    <div class="drawer-btns">
+      <button class="dbtn dbtn-cancel" onclick="closeDrawer()">Отмена</button>
+      <button class="dbtn dbtn-add-r" id="d-submit" onclick="commitDrawer()">Добавить</button>
+    </div>
+  </div>
+</div>
+
+<!-- CONTEXT MENU -->
+<div class="ctx" id="ctx" style="display:none">
+  <div class="ctx-item" onclick="ctxAction('move-up')">↑ Переместить вверх</div>
+  <div class="ctx-item" onclick="ctxAction('move-down')">↓ Переместить вниз</div>
+  <div class="ctx-sep"></div>
+  <div class="ctx-item" onclick="ctxAction('copy-row')">⧉ Копировать строку</div>
+  <div class="ctx-item" onclick="ctxAction('copy-cells')">▦ Копировать ячейки…</div>
+  <div class="ctx-item" onclick="ctxAction('paste-row')">⎘ Вставить строку</div>
+  <div class="ctx-sep"></div>
+  <div class="ctx-item danger" onclick="ctxAction('delete')">✕ Удалить строку</div>
+</div>
+
+<!-- CELL COPY PICKER -->
+<div class="ctx" id="cell-picker" style="display:none">
+  <div style="padding:6px 12px 4px;font-size:10px;text-transform:uppercase;letter-spacing:.6px;color:var(--muted)">Выбери ячейки</div>
+  <div class="ctx-item" id="cp-mes" onclick="toggleCellSel('месяц')">☐ Месяц</div>
+  <div class="ctx-item" id="cp-dat" onclick="toggleCellSel('дата')">☐ Дата</div>
+  <div class="ctx-item" id="cp-nom" onclick="toggleCellSel('номенклатура')">☐ Номенклатура</div>
+  <div class="ctx-item" id="cp-sum" onclick="toggleCellSel('сумма')">☐ Сумма</div>
+  <div class="ctx-item" id="cp-art" onclick="toggleCellSel('статья')">☐ Статья</div>
+  <div class="ctx-sep"></div>
+  <div class="ctx-item" style="color:var(--b)" onclick="confirmCellCopy()">Копировать выбранные</div>
+  <div class="ctx-item" onclick="closeAllCtx()">Отмена</div>
+</div>
+
+<!-- PASTE BAR -->
+<div class="paste-bar" id="paste-bar" style="display:none">
+  <span id="paste-label">Буфер: строка</span>
+  <button onclick="pasteHere()">Вставить здесь</button>
+  <button class="pb-cancel" onclick="clearClipboard()">✕</button>
+</div>
+
+<!-- SYNC OVERLAY -->
+<div class="ov" id="ov">
+  <div class="modal">
+    <h2>Выгрузить в Google Таблицу</h2>
+    <p class="modal-sub">Несинхронизированные строки:</p>
+    <div id="sync-summary"></div>
+    <div class="modal-btns">
+      <button class="mbtn mbtn-c" onclick="closeSync()">Отмена</button>
+      <button class="mbtn mbtn-s" onclick="syncAll()">Отправить</button>
+    </div>
+  </div>
+</div>
+
+<!-- TOOLTIP -->
+<div class="tip" id="tip"></div>
+
+<!-- TOAST -->
+<div class="toast" id="toast"></div>
+
+<script>
+// ═══════════════ CONFIG ═══════════════
+const SHEETS = {рф:'Р_ФАКТ',рп:'Р_ПЛАН',дф:'Д_ФАКТ',дп:'Д_ПЛАН'};
+const МЕС_ТИП = {рф:'ч',рп:'п',дф:'ч',дп:'п'};
+const МЧ = ['1','2','3','4','5','6','7','8','9','10','11','12'];
+const МП = ['января','февраля','марта','апреля','мая','июня','июля','августа','сентября','октября','ноября','декабря'];
+const ПОЛЯ = ['месяц','дата','номенклатура','сумма','статья'];
+
+function getScriptUrl(){return localStorage.getItem('fin_url')||'';}
+function saveConfig(){
+  const v=document.getElementById('cfg-url').value.trim();
+  localStorage.setItem('fin_url',v);
+  document.getElementById('url-status').textContent='';
+}
+
+// ═══════════════ СТАТЬИ ═══════════════
+let СТ = {
+  р:["Еда","Кофе","Авто","ЖКХ","Бытовые товары","Проезд метро|автобус","Регулярный уход","Прочие","Ништяки","Подписки","Связь|интернет","Аптеки|лекарства","Образовательный кредит","Витамины|минералы","Одежда","Дом|уют","Образование|курсы","Налоги","Нераспределённые расходы"],
+  д:["Зарплата","Прочие поступления","Инвестдоходы прочие","Инвестдоходы от %отД","Доходы полностью в %отД","Доходы подлежащие %отД"]
+};
+async function loadArticles(){
+  const url=getScriptUrl();if(!url)return;
+  try{
+    const r=await fetch(url+"?action=getArticles");
+    const d=await r.json();
+    if(d.расходы)СТ.р=d.расходы;
+    if(d.доходы)СТ.д=d.доходы;
+  }catch(e){}
+}const стДля=id=>id.startsWith('д')?СТ.д:СТ.р;
+
+// ═══════════════ STORAGE ═══════════════
+const getData=()=>{try{return JSON.parse(localStorage.getItem('fin3')||'{}')}catch(e){return{}}};
+const saveData=d=>localStorage.setItem('fin3',JSON.stringify(d));
+const getRows=id=>getData()[id]||[];
+const setRows=(id,r)=>{const d=getData();d[id]=r;saveData(d);};
+function addRowData(id,row){const rows=getRows(id);row.id=Date.now()+Math.random();row.synced=false;rows.push(row);setRows(id,rows);return row;}
+function updRow(id,rid,f){setRows(id,getRows(id).map(r=>r.id===rid?{...r,...f,synced:false}:r));}
+function delRowData(id,rid){setRows(id,getRows(id).filter(r=>r.id!==rid));}
+function moveRowData(id,rid,dir){
+  const rows=getRows(id);const i=rows.findIndex(r=>r.id===rid);
+  const ni=i+dir;if(ni<0||ni>=rows.length)return false;
+  [rows[i],rows[ni]]=[rows[ni],rows[i]];setRows(id,rows);return true;
+}
+
+// ═══════════════ STATE ═══════════════
+let curTab='рф', curColor='r';
+let ctxRowId=null;
+let clipboard=null; // {type:'row'|'cells', data:{...}, fields:[...]}
+let cellSelFields=new Set();
+
+// ═══════════════ DATE ═══════════════
+const today=new Date();
+const todayISO=`${today.getFullYear()}-${String(today.getMonth()+1).padStart(2,'0')}-${String(today.getDate()).padStart(2,'0')}`;
+const curМЧ=String(today.getMonth()+1);
+const curМП=МП[today.getMonth()];
+
+// ═══════════════ RENDER ═══════════════
+function renderTable(id){
+  const tbody=document.getElementById('body-'+id);
+  tbody.innerHTML='';
+  const rows=getRows(id);
+  if(rows.length===0){
+    tbody.innerHTML=`<tr class="empty-row"><td colspan="6" style="text-align:center;color:var(--muted);font-size:12px;padding:28px;font-style:italic">Нет записей — нажми ＋ чтобы добавить</td></tr>`;
+  } else {
+    rows.forEach(r=>tbody.appendChild(makeRow(id,r)));
+  }
+  recalc(id);updBadge();
+}
+
+function makeRow(id,row){
+  const тип=МЕС_ТИП[id];
+  const список=тип==='ч'?МЧ:МП;
+  const mOpts='<option value="">—</option>'+список.map(m=>`<option${m===row.месяц?' selected':''}>${m}</option>`).join('');
+  const aOpts='<option value="">—</option>'+стДля(id).map(s=>`<option${s===row.статья?' selected':''}>${s}</option>`).join('');
+  const rid=row.id;
+
+  const tr=document.createElement('tr');
+  tr.className='drow';
+  tr.dataset.rid=rid;
+  tr.dataset.id=id;
+  tr.draggable=true;
+  tr.innerHTML=`
+    <td class="cm"><select onchange="updRow('${id}',${rid},{'месяц':this.value});updBadge()">${mOpts}</select></td>
+    <td class="cd"><input type="text" value="${row.дата||''}" placeholder="ДД.ММ" onchange="updRow('${id}',${rid},{'дата':this.value});updBadge()"></td>
+    <td class="cn"><input type="text" value="${row.номенклатура||''}" onchange="updRow('${id}',${rid},{'номенклатура':this.value});updBadge()"
+      onmouseenter="showTip(event,this.value)" onmouseleave="hideTip()"
+      ontouchstart="showTipTouch(event,this.value)" ontouchend="hideTip()"></td>
+    <td class="cs"><input type="number" value="${row.сумма||''}" step="0.01" onchange="updRow('${id}',${rid},{'сумма':parseFloat(this.value)||0});recalc('${id}');updBadge()"></td>
+    <td class="ca"><select onchange="updRow('${id}',${rid},{'статья':this.value});updBadge()"
+      onmouseenter="showTip(event,this.querySelector('option:checked')?.text||'')" onmouseleave="hideTip()">${aOpts}</select></td>
+    <td class="cx"><button class="row-menu-btn" onclick="openCtx(event,'${id}',${rid})" title="Действия">⋮</button></td>`;
+
+  // drag & drop
+  tr.addEventListener('dragstart',e=>{e.dataTransfer.effectAllowed='move';tr.classList.add('dragging');tr.dataset.dragId=rid;tr.dataset.dragSheet=id;});
+  tr.addEventListener('dragend',()=>{tr.classList.remove('dragging');document.querySelectorAll('.drag-over').forEach(el=>el.classList.remove('drag-over'));});
+  tr.addEventListener('dragover',e=>{e.preventDefault();tr.classList.add('drag-over');});
+  tr.addEventListener('dragleave',()=>tr.classList.remove('drag-over'));
+  tr.addEventListener('drop',e=>{
+    e.preventDefault();tr.classList.remove('drag-over');
+    const fromRid=parseFloat(e.dataTransfer.getData('text')||tr.dataset.dragId||(document.querySelector('.dragging')?.dataset.rid));
+    const fromSheet=document.querySelector('.dragging')?.dataset.dragSheet||id;
+    if(!fromRid||fromRid===rid)return;
+    dropRow(fromSheet,fromRid,id,rid);
+  });
+  tr.addEventListener('dragstart',e=>e.dataTransfer.setData('text',String(rid)));
+
+  // long press → context menu
+  let lpt;
+  tr.addEventListener('touchstart',e=>{lpt=setTimeout(()=>{openCtx(e.touches[0],id,rid);},600);},{passive:true});
+  tr.addEventListener('touchend',()=>clearTimeout(lpt));
+  tr.addEventListener('touchmove',()=>clearTimeout(lpt),{passive:true});
+
+  return tr;
+}
+
+function dropRow(fromSheet,fromRid,toSheet,toRid){
+  const fromRows=getRows(fromSheet);
+  const rowData=fromRows.find(r=>r.id===fromRid);
+  if(!rowData)return;
+  if(fromSheet===toSheet){
+    const rows=[...fromRows];
+    const fi=rows.findIndex(r=>r.id===fromRid);
+    const ti=rows.findIndex(r=>r.id===toRid);
+    rows.splice(fi,1);rows.splice(ti,0,rowData);
+    setRows(fromSheet,rows);renderTable(fromSheet);
+  } else {
+    delRowData(fromSheet,fromRid);
+    const newRow={...rowData,id:Date.now()+Math.random(),synced:false};
+    const toRows=getRows(toSheet);
+    const ti=toRows.findIndex(r=>r.id===toRid);
+    toRows.splice(ti,0,newRow);setRows(toSheet,toRows);
+    renderTable(fromSheet);renderTable(toSheet);
+  }
+  updBadge();
+}
+
+function recalc(id){
+  const s=getRows(id).reduce((a,r)=>a+(parseFloat(r.сумма)||0),0);
+  const el=document.getElementById('tot-'+id);
+  if(el)el.textContent=s.toLocaleString('ru-RU',{minimumFractionDigits:2,maximumFractionDigits:2});
+}
+
+// ═══════════════ DRAWER ═══════════════
+function openDrawer(){
+  const id=curTab;
+  const тип=МЕС_ТИП[id];
+  const список=тип==='ч'?МЧ:МП;
+  const def=тип==='ч'?curМЧ:curМП;
+  const mesEl=document.getElementById('d-mes');
+  mesEl.innerHTML='<option value="">—</option>'+список.map(m=>`<option${m===def?' selected':''}>${m}</option>`).join('');
+  const artEl=document.getElementById('d-art');
+  artEl.innerHTML='<option value="">—</option>'+стДля(id).map(s=>`<option>${s}</option>`).join('');
+  document.getElementById('d-dat').value=todayISO;
+  document.getElementById('d-nom').value='';
+  document.getElementById('d-sum').value='';
+  document.getElementById('drawer-title').textContent='Новая запись → '+SHEETS[id];
+  const sb=document.getElementById('d-submit');
+  sb.className='dbtn dbtn-add-'+(curColor==='r'?'r':'g');
+  document.getElementById('dov').classList.add('open');
+  setTimeout(()=>document.getElementById('d-nom').focus(),300);
+}
+function closeDrawer(){document.getElementById('dov').classList.remove('open');}
+function commitDrawer(){
+  const месяц=document.getElementById('d-mes').value;
+  const датаISO=document.getElementById('d-dat').value;
+  const номенклатура=document.getElementById('d-nom').value.trim();
+  const сумма=parseFloat(document.getElementById('d-sum').value)||0;
+  const статья=document.getElementById('d-art').value;
+  if(!номенклатура||!датаISO){showToast('Заполни дату и номенклатуру','err');return;}
+  const [,mm,dd]=датаISO.split('-');
+  const дата=`${dd}.${mm}`;
+  const row=addRowData(curTab,{месяц,дата,номенклатура,сумма,статья});
+  closeDrawer();
+  const tbody=document.getElementById('body-'+curTab);
+  tbody.querySelector('.empty-row')?.remove();
+  const newTr=makeRow(curTab,row);
+  newTr.classList.add('new-row');
+  tbody.appendChild(newTr);
+  setTimeout(()=>newTr.classList.remove('new-row'),400);
+  newTr.scrollIntoView({behavior:'smooth',block:'nearest'});
+  recalc(curTab);updBadge();
+}
+document.getElementById('dov').addEventListener('click',e=>{if(e.target===document.getElementById('dov'))closeDrawer();});
+
+// ═══════════════ CONTEXT MENU ═══════════════
+let ctxSheet=null;
+function openCtx(e,id,rid){
+  closeAllCtx();
+  ctxSheet=id;ctxRowId=rid;
+  const menu=document.getElementById('ctx');
+  menu.style.display='block';
+  const x=Math.min((e.clientX||e.pageX||window.innerWidth/2),window.innerWidth-210);
+  const y=Math.min((e.clientY||e.pageY||window.innerHeight/2),window.innerHeight-300);
+  menu.style.left=x+'px';menu.style.top=y+'px';
+  // show/hide paste option
+  menu.querySelectorAll('.ctx-item')[6].style.display=clipboard?'flex':'none';
+}
+function closeAllCtx(){
+  document.getElementById('ctx').style.display='none';
+  document.getElementById('cell-picker').style.display='none';
+}
+document.addEventListener('click',e=>{
+  if(!e.target.closest('.ctx')&&!e.target.closest('.row-menu-btn'))closeAllCtx();
+});
+
+function ctxAction(act){
+  closeAllCtx();
+  const id=ctxSheet,rid=ctxRowId;
+  if(act==='move-up'){if(moveRowData(id,rid,-1))renderTable(id);}
+  else if(act==='move-down'){if(moveRowData(id,rid,1))renderTable(id);}
+  else if(act==='copy-row'){
+    const row=getRows(id).find(r=>r.id===rid);
+    if(row){clipboard={type:'row',data:{...row},fields:ПОЛЯ};updatePasteBar();}
+    showToast('Строка скопирована','info');
+  }
+  else if(act==='copy-cells'){openCellPicker();}
+  else if(act==='paste-row'){pasteIntoSheet(id,rid);}
+  else if(act==='delete'){
+    delRowData(id,rid);
+    document.querySelector(`#body-${id} [data-rid="${rid}"]`)?.remove();
+    if(getRows(id).length===0)document.getElementById('body-'+id).innerHTML=`<tr class="empty-row"><td colspan="6" style="text-align:center;color:var(--muted);font-size:12px;padding:28px;font-style:italic">Нет записей — нажми ＋</td></tr>`;
+    recalc(id);updBadge();
+  }
+}
+
+// ═══════════════ CELL PICKER ═══════════════
+function openCellPicker(){
+  cellSelFields=new Set();
+  ПОЛЯ.forEach(f=>{
+    const el=document.getElementById('cp-'+f.slice(0,3));
+    if(el)el.textContent='☐ '+f.charAt(0).toUpperCase()+f.slice(1);
+  });
+  const picker=document.getElementById('cell-picker');
+  picker.style.display='block';
+  const ctx=document.getElementById('ctx');
+  picker.style.left=ctx.style.left;
+  picker.style.top=ctx.style.top;
+}
+const fieldKey={'месяц':'mes','дата':'dat','номенклатура':'nom','сумма':'sum','статья':'art'};
+function toggleCellSel(field){
+  const key=fieldKey[field]||field.slice(0,3);
+  const el=document.getElementById('cp-'+key);
+  if(cellSelFields.has(field)){cellSelFields.delete(field);if(el)el.textContent='☐ '+field.charAt(0).toUpperCase()+field.slice(1);}
+  else{cellSelFields.add(field);if(el)el.textContent='☑ '+field.charAt(0).toUpperCase()+field.slice(1);}
+}
+function confirmCellCopy(){
+  closeAllCtx();
+  if(cellSelFields.size===0){showToast('Выбери хотя бы одно поле','err');return;}
+  const id=ctxSheet,rid=ctxRowId;
+  const row=getRows(id).find(r=>r.id===rid);
+  if(!row)return;
+  const data={};
+  cellSelFields.forEach(f=>data[f]=row[f]);
+  clipboard={type:'cells',data,fields:[...cellSelFields]};
+  updatePasteBar();
+  showToast(`Скопировано: ${[...cellSelFields].join(', ')}`,'info');
+}
+
+// ═══════════════ PASTE ═══════════════
+function updatePasteBar(){
+  const bar=document.getElementById('paste-bar');
+  if(!clipboard){bar.style.display='none';return;}
+  bar.style.display='flex';
+  const label=clipboard.type==='row'?'Буфер: строка':'Буфер: '+clipboard.fields.join(', ');
+  document.getElementById('paste-label').textContent=label;
+}
+function pasteHere(){
+  // paste into current tab at end
+  pasteIntoSheet(curTab,null);
+}
+function pasteIntoSheet(id,afterRid){
+  if(!clipboard){showToast('Буфер пуст','err');return;}
+  const newRow={месяц:'',дата:'',номенклатура:'',сумма:0,статья:'',...clipboard.data};
+  newRow.id=Date.now()+Math.random();newRow.synced=false;
+  const rows=getRows(id);
+  if(afterRid){
+    const i=rows.findIndex(r=>r.id===afterRid);
+    rows.splice(i+1,0,newRow);
+  } else {
+    rows.push(newRow);
+  }
+  setRows(id,rows);
+  renderTable(id);
+  showToast('Вставлено','ok');
+}
+function clearClipboard(){clipboard=null;updatePasteBar();}
+
+// ═══════════════ TOOLTIP ═══════════════
+let tipTimer;
+const tipEl=document.getElementById('tip');
+function showTip(e,text){
+  if(!text||text.length<20)return;
+  clearTimeout(tipTimer);
+  tipTimer=setTimeout(()=>{
+    tipEl.textContent=text;tipEl.classList.add('show');
+    const x=Math.min(e.clientX+12,window.innerWidth-280);
+    const y=Math.max(e.clientY-40,8);
+    tipEl.style.left=x+'px';tipEl.style.top=y+'px';
+  },400);
+}
+function showTipTouch(e,text){if(!text||text.length<20)return;showTip(e.touches[0],text);}
+function hideTip(){clearTimeout(tipTimer);tipEl.classList.remove('show');}
+
+// ═══════════════ BADGE ═══════════════
+function updBadge(){
+  // badge shows total unsaved rows across all sheets
+  const n=Object.keys(SHEETS).reduce((a,id)=>a+getRows(id).filter(r=>!r.synced).length,0);
+  document.getElementById('sync-cnt').textContent=n;
+}
+
+// header sync button → go to settings tab
+function openSync(){
+  const btn=document.getElementById('tab-settings');
+  showTab('настройки','s',btn);
+  updatePushPreview();
+}
+function closeSync(){} // legacy no-op
+
+// ═══════════════ SETTINGS: TEST ═══════════════
+async function testConnection(){
+  const url=getScriptUrl();
+  const st=document.getElementById('url-status');
+  if(!url){st.className='status-line err';st.textContent='Введи URL';return;}
+  st.className='status-line loading';st.textContent='Проверяю...';
+  try{
+    const r=await fetch(url+'?action=getArticles');
+    const d=await r.json();
+    if(d.расходы||d.доходы){
+      st.className='status-line ok';st.textContent='✓ Соединение установлено';
+      if(d.расходы)СТ.р=d.расходы;
+      if(d.доходы)СТ.д=d.доходы;
+      document.getElementById('cfg-url').classList.add('ok-input');
+    } else {
+      st.className='status-line err';st.textContent='Ответ получен, но формат неожиданный';
+    }
+  }catch(e){
+    st.className='status-line err';st.textContent='Ошибка: '+e.message;
+  }
+}
+
+// ═══════════════ SETTINGS: FETCH ONE SHEET ═══════════════
+async function fetchOne(id){
+  const url=getScriptUrl();
+  if(!url){showToast('Сначала укажи URL','err');return;}
+  const sheetName={рф:'Р_ФАКТ',рп:'Р_ПЛАН',дф:'Д_ФАКТ',дп:'Д_ПЛАН'}[id];
+  const cnt=document.getElementById('cnt-'+id);
+  cnt.textContent='загрузка...';cnt.className='sheet-cnt';
+  try{
+    const r=await fetch(url+'?action=getSheet&sheet='+encodeURIComponent(sheetName));
+    const data=await r.json();
+    if(data.error){cnt.textContent='ошибка';showToast(data.error,'err');return;}
+    const rows=(data.rows||[]).map(r=>({...r,id:Date.now()+Math.random(),synced:true}));
+    setRows(id,rows);renderTable(id);
+    cnt.textContent='✓ '+rows.length+' строк';cnt.className='sheet-cnt loaded';
+    showToast(sheetName+': загружено '+rows.length+' строк','ok');
+    updBadge();
+  }catch(e){cnt.textContent='ошибка';showToast('Ошибка: '+e.message,'err');}
+}
+
+// ═══════════════ SETTINGS: PUSH ONE SHEET ═══════════════
+async function pushOne(id){
+  const url=getScriptUrl();
+  if(!url){showToast('Сначала укажи URL','err');return;}
+  const sheetName={рф:'Р_ФАКТ',рп:'Р_ПЛАН',дф:'Д_ФАКТ',дп:'Д_ПЛАН'}[id];
+  const el=document.getElementById('push-'+id);
+  el.textContent='выгрузка...';
+  const rows=getRows(id).map(r=>({месяц:r.месяц||'',дата:r.дата||'',номенклатура:r.номенклатура||'',сумма:r.сумма||0,статья:r.статья||''}));
+  try{
+    const res=await fetch(url,{method:'POST',body:JSON.stringify({action:'syncSheet',sheet:sheetName,rows})});
+    const d=await res.json();
+    if(d.status==='ok'){
+      setRows(id,getRows(id).map(r=>({...r,synced:true})));
+      el.textContent='✓ выгружено';el.className='sheet-cnt loaded';
+      showToast(sheetName+': выгружено','ok');updBadge();
+    } else {el.textContent='ошибка';showToast('Ошибка: '+(d.error||''),'err');}
+  }catch(e){el.textContent='ошибка';showToast('Ошибка: '+e.message,'err');}
+}
+
+// ═══════════════ SETTINGS: FETCH FROM SHEET ═══════════════
+async function fetchFromSheet(){
+  const url=getScriptUrl();
+  if(!url){showToast('Сначала укажи URL','err');return;}
+  const btn=document.getElementById('btn-fetch');
+  const st=document.getElementById('fetch-status');
+  btn.disabled=true;st.className='status-line loading';st.textContent='Загружаю...';
+
+  // Reset counters
+  Object.keys(SHEETS).forEach(id=>{
+    document.getElementById('cnt-'+id).textContent='загрузка...';
+    document.getElementById('cnt-'+id).className='sheet-cnt';
+  });
+
+  try{
+    const r=await fetch(url+'?action=getAllSheets');
+    const data=await r.json();
+
+    const sheetMap={рф:'Р_ФАКТ',рп:'Р_ПЛАН',дф:'Д_ФАКТ',дп:'Д_ПЛАН'};
+    let totalRows=0;
+
+    Object.keys(sheetMap).forEach(id=>{
+      const sheetName=sheetMap[id];
+      const sheetData=data[sheetName];
+      const el=document.getElementById('cnt-'+id);
+      if(!sheetData||sheetData.error){
+        el.textContent='ошибка';el.className='sheet-cnt';return;
+      }
+      // Convert rows: assign ids, preserve empty rows
+      const rows=(sheetData.rows||[]).map(r=>({
+        ...r,
+        id:Date.now()+Math.random(),
+        synced:true  // freshly loaded = in sync
+      }));
+      setRows(id,rows);
+      renderTable(id);
+      el.textContent='✓ '+rows.length+' строк';
+      el.className='sheet-cnt loaded';
+      totalRows+=rows.length;
+    });
+
+    // Also reload articles
+    if(data.расходы)СТ.р=data.расходы;
+    if(data.доходы)СТ.д=data.доходы;
+
+    st.className='status-line ok';
+    st.textContent=`✓ Загружено ${totalRows} строк`;
+    updBadge();
+  }catch(e){
+    st.className='status-line err';st.textContent='Ошибка: '+e.message;
+    Object.keys(SHEETS).forEach(id=>document.getElementById('cnt-'+id).textContent='—');
+  }finally{btn.disabled=false;}
+}
+
+// ═══════════════ SETTINGS: PUSH TO SHEET ═══════════════
+function updatePushPreview(){
+  Object.keys(SHEETS).forEach(id=>{
+    const n=getRows(id).length;
+    const el=document.getElementById('push-'+id);
+    if(el){el.textContent=n+' строк';el.className='sheet-cnt'+(n>0?' loaded':'');}
+  });
+}
+
+async function pushToSheet(){
+  const url=getScriptUrl();
+  if(!url){showToast('Сначала укажи URL','err');return;}
+  const btn=document.getElementById('btn-push');
+  const st=document.getElementById('push-status');
+  btn.disabled=true;st.className='status-line loading';st.textContent='Выгружаю...';
+
+  const sheetMap={рф:'Р_ФАКТ',рп:'Р_ПЛАН',дф:'Д_ФАКТ',дп:'Д_ПЛАН'};
+  let ok=0,err=0;
+
+  for(const id of Object.keys(sheetMap)){
+    const sheetName=sheetMap[id];
+    const rows=getRows(id).map(r=>({
+      месяц:r.месяц||'',
+      дата:r.дата||'',
+      номенклатура:r.номенклатура||'',
+      сумма:r.сумма||0,
+      статья:r.статья||''
+    }));
+    try{
+      const res=await fetch(url,{
+        method:'POST',
+        body:JSON.stringify({action:'syncSheet',sheet:sheetName,rows})
+      });
+      const d=await res.json();
+      if(d.status==='ok'){
+        // Mark all rows as synced
+        setRows(id,getRows(id).map(r=>({...r,synced:true})));
+        document.getElementById('push-'+id).textContent='✓ выгружено';
+        ok++;
+      } else {
+        document.getElementById('push-'+id).textContent='ошибка';err++;
+      }
+    }catch(e){
+      document.getElementById('push-'+id).textContent='ошибка';err++;
+    }
+  }
+
+  if(err===0){
+    st.className='status-line ok';st.textContent=`✓ Все листы выгружены (${ok})`;
+    showToast('Выгрузка завершена','ok');
+  } else {
+    st.className='status-line err';st.textContent=`Успешно: ${ok}, ошибок: ${err}`;
+  }
+  updBadge();
+  btn.disabled=false;
+}
+
+// ═══════════════ CLEAR LOCAL ═══════════════
+function clearLocalData(){
+  if(!confirm('Удалить все локальные данные? Это действие нельзя отменить.'))return;
+  localStorage.removeItem('fin3');
+  Object.keys(SHEETS).forEach(id=>renderTable(id));
+  updBadge();
+  showToast('Локальные данные очищены','info');
+}
+
+// ═══════════════ TABS ═══════════════
+function showTab(id,color,btn){
+  document.querySelectorAll('.panel').forEach(p=>p.classList.remove('vis'));
+  document.querySelectorAll('.tab').forEach(t=>t.className='tab');
+  document.getElementById('panel-'+id).classList.add('vis');
+  btn.className='tab a'+color;
+  if(id!=='настройки'){curTab=id;curColor=color;}
+  const fab=document.getElementById('fab');
+  fab.style.display=(id==='настройки')?'none':'flex';
+  if(id==='настройки'){
+    // restore saved url
+    const saved=getScriptUrl();
+    if(saved)document.getElementById('cfg-url').value=saved;
+    updatePushPreview();
+  }
+}
+
+// ═══════════════ TOAST ═══════════════
+let _tt;
+function showToast(msg,type){
+  const t=document.getElementById('toast');t.textContent=msg;t.className='toast show '+(type||'');
+  clearTimeout(_tt);_tt=setTimeout(()=>t.className='toast',2500);
+}
+
+// ═══════════════ INIT ═══════════════
+window.onload=()=>{
+  Object.keys(SHEETS).forEach(id=>renderTable(id));
+  const first=document.querySelector('.tab');
+  first.className='tab ar';
+  document.getElementById('panel-рф').classList.add('vis');
+  document.getElementById('fab').className='fab r-mode';
+  // restore saved URL
+  const saved=getScriptUrl();
+  if(saved){
+    document.getElementById('cfg-url').value=saved;
+    loadArticles();
+  }
+};
+</script>
+</body>
+</html>
